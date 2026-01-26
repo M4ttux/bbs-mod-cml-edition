@@ -8,6 +8,7 @@ import mchorse.bbs_mod.camera.clips.CameraClipContext;
 import mchorse.bbs_mod.camera.clips.modifiers.EntityClip;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
@@ -36,6 +37,7 @@ import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
 import mchorse.bbs_mod.ui.forms.UIFormPalette;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
@@ -45,9 +47,11 @@ import mchorse.bbs_mod.ui.framework.elements.input.list.UIStringList;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIFolderPickerOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIListOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UINumberOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
+import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
@@ -61,6 +65,7 @@ import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 import mchorse.bbs_mod.utils.pose.Transform;
+import mchorse.bbs_mod.utils.resources.Pixels;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
@@ -72,10 +77,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.io.File;
+import java.io.FileInputStream;
 import java.nio.file.Path;
 
 /**
@@ -104,6 +111,8 @@ public class UIReplayList extends UIList<Replay> {
     private static double LAST_OFFSET_RANDOM_SEED = 0D;
     private static double LAST_OFFSET_RANDOM_MIN = -1D;
     private static double LAST_OFFSET_RANDOM_MAX = 1D;
+    private static String LAST_RANDOM_SKINS_STEVE_MODEL = "";
+    private static String LAST_RANDOM_SKINS_ALEX_MODEL = "";
 
     public UIFilmPanel panel;
     public UIReplaysOverlayPanel overlay;
@@ -1303,15 +1312,102 @@ public class UIReplayList extends UIList<Replay> {
             return;
         }
 
-        UIFolderPickerOverlayPanel panel = new UIFolderPickerOverlayPanel(
-                UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS,
-                IKey.constant("Select the folder containing PNG skin files:"),
-                (folder) -> this.processRandomSkins(folder));
+        List<Replay> selectedReplays = this.getCurrent();
+        String defaultModel = "";
 
-        UIOverlay.addOverlay(this.getContext(), panel);
+        if (!selectedReplays.isEmpty())
+        {
+            ValueForm formValue = selectedReplays.get(0).form;
+            if (formValue != null && formValue.get() instanceof ModelForm)
+            {
+                defaultModel = ((ModelForm) formValue.get()).model.get();
+            }
+        }
+
+        String[] steveModel = new String[] { LAST_RANDOM_SKINS_STEVE_MODEL.isEmpty() ? defaultModel : LAST_RANDOM_SKINS_STEVE_MODEL };
+        String[] alexModel = new String[] { LAST_RANDOM_SKINS_ALEX_MODEL.isEmpty() ? "player/alex" : LAST_RANDOM_SKINS_ALEX_MODEL };
+        File[] selectedFolder = new File[] { null };
+
+        UIConfirmOverlayPanel panel = new UIConfirmOverlayPanel(
+            UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS_TITLE,
+            UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS_DESCRIPTION,
+            (b) ->
+            {
+                if (b)
+                {
+                    if (selectedFolder[0] == null)
+                    {
+                        UIOverlay.addOverlay(this.getContext(),
+                            new UIMessageOverlayPanel(UIKeys.GENERAL_ERROR,
+                                UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS_FOLDER_REQUIRED));
+                        return;
+                    }
+
+                    LAST_RANDOM_SKINS_STEVE_MODEL = steveModel[0] == null ? "" : steveModel[0];
+                    LAST_RANDOM_SKINS_ALEX_MODEL = alexModel[0] == null ? "" : alexModel[0];
+
+                    this.processRandomSkins(selectedFolder[0], LAST_RANDOM_SKINS_STEVE_MODEL, LAST_RANDOM_SKINS_ALEX_MODEL);
+                }
+            });
+
+        UILabel folderValue = UI.label(UIKeys.GENERAL_NONE).background();
+        UIButton pickFolder = new UIButton(UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS_PICK_FOLDER, (b) ->
+        {
+            UIFolderPickerOverlayPanel picker = new UIFolderPickerOverlayPanel(
+                UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS_PICK_FOLDER_TITLE,
+                UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS_PICK_FOLDER_DESCRIPTION,
+                (folder) ->
+                {
+                    selectedFolder[0] = folder;
+
+                    String label = folder.getName();
+                    folderValue.label = IKey.constant(label);
+                });
+
+            UIOverlay.addOverlay(this.getContext(), picker);
+        });
+
+        final UIButton[] stevePick = new UIButton[1];
+        final UIButton[] alexPick = new UIButton[1];
+
+        stevePick[0] = new UIButton(this.getModelLabel(steveModel[0]), (b) ->
+        {
+            this.openModelPicker(steveModel[0], (value) ->
+            {
+                steveModel[0] = value;
+                stevePick[0].label = this.getModelLabel(value);
+            });
+        });
+
+        alexPick[0] = new UIButton(this.getModelLabel(alexModel[0]), (b) ->
+        {
+            this.openModelPicker(alexModel[0], (value) ->
+            {
+                alexModel[0] = value;
+                alexPick[0].label = this.getModelLabel(value);
+            });
+        });
+
+        UIElement controls = UI.column(6,
+            UI.label(UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS_FOLDER),
+            folderValue,
+            pickFolder,
+            UI.label(UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS_MODEL_STEVE).marginTop(8),
+            stevePick[0],
+            UI.label(UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS_MODEL_ALEX).marginTop(8),
+            alexPick[0]
+        );
+
+        controls.relative(panel.content).x(6).y(70).w(1F, -12).h(1F, -170);
+        panel.content.add(controls);
+
+        panel.confirm.label = UIKeys.GENERAL_CONFIRM;
+        panel.confirm.relative(panel.content).x(5).y(1F, -25).w(1F, -10).h(20).anchor(0F, 0F);
+
+        UIOverlay.addOverlay(this.getContext(), panel, 260, 260);
     }
 
-    private void processRandomSkins(File skinsFolder) {
+    private void processRandomSkins(File skinsFolder, String steveModel, String alexModel) {
         if (skinsFolder == null) {
             return;
         }
@@ -1353,11 +1449,14 @@ public class UIReplayList extends UIList<Replay> {
         }
 
         // Apply skins to replays
+        Map<File, Boolean> slimCache = new HashMap<>();
         int skinIndex = 0;
         int successCount = 0;
 
         for (Replay replay : selectedReplays) {
             File skinFile = skinFiles.get(skinIndex % skinFiles.size());
+            boolean slim = slimCache.computeIfAbsent(skinFile, this::isSlimSkin);
+            String targetModel = slim ? alexModel : steveModel;
 
             // Create a Link using the AssetProvider
             Link skinLink = BBSMod.getProvider().getLink(skinFile);
@@ -1375,9 +1474,14 @@ public class UIReplayList extends UIList<Replay> {
 
                 if (form instanceof MobForm) {
                     ((MobForm) form).texture.set(skinLink);
+                    ((MobForm) form).slim.set(slim);
                     successCount++;
                 } else if (form instanceof ModelForm) {
                     ((ModelForm) form).texture.set(skinLink);
+                    if (targetModel != null && !targetModel.isEmpty())
+                    {
+                        ((ModelForm) form).model.set(targetModel);
+                    }
                     successCount++;
                 }
             }
@@ -1395,6 +1499,162 @@ public class UIReplayList extends UIList<Replay> {
                             IKey.constant(
                                     "The skins folder must be inside the BBS assets folder. For example: config/bbs/assets/models/!Skins/")));
         }
+    }
+
+    private IKey getModelLabel(String model)
+    {
+        if (model == null || model.isEmpty())
+        {
+            return UIKeys.GENERAL_NONE;
+        }
+
+        return IKey.constant(model);
+    }
+
+    private void openModelPicker(String current, Consumer<String> callback)
+    {
+        UIListOverlayPanel list = new UIListOverlayPanel(UIKeys.FORMS_EDITOR_MODEL_MODELS, (l) ->
+        {
+            callback.accept(l);
+        });
+
+        list.addValues(BBSModClient.getModels().getAvailableKeys());
+        list.list.list.sort();
+        list.setValue(current);
+
+        UIOverlay.addOverlay(this.getContext(), list);
+    }
+
+    private boolean isSlimSkin(File skinFile)
+    {
+        try (FileInputStream stream = new FileInputStream(skinFile))
+        {
+            Pixels pixels = Pixels.fromPNGStream(stream);
+            boolean slim = this.isSlimSkin(pixels);
+
+            if (pixels != null)
+            {
+                pixels.delete();
+            }
+
+            return slim;
+        }
+        catch (Exception e)
+        {
+            return false;
+        }
+    }
+
+    private boolean isSlimSkin(Pixels pixels)
+    {
+        if (pixels == null || pixels.width < 64 || pixels.height < 64)
+        {
+            return false;
+        }
+
+        if (pixels.width % 64 != 0 || pixels.height % 64 != 0)
+        {
+            return false;
+        }
+
+        int scaleX = pixels.width / 64;
+        int scaleY = pixels.height / 64;
+
+        if (scaleX <= 0 || scaleY <= 0)
+        {
+            return false;
+        }
+
+        Boolean armWidthSlim = this.isSlimByArmWidth(pixels, scaleX, scaleY);
+
+        if (armWidthSlim != null)
+        {
+            return armWidthSlim.booleanValue();
+        }
+
+        return this.isAreaFullyTransparent(pixels, 54 * scaleX, 20 * scaleY, 2 * scaleX, 12 * scaleY)
+            && this.isAreaFullyTransparent(pixels, 54 * scaleX, 36 * scaleY, 2 * scaleX, 12 * scaleY)
+            && this.isAreaFullyTransparent(pixels, 46 * scaleX, 52 * scaleY, 2 * scaleX, 12 * scaleY)
+            && this.isAreaFullyTransparent(pixels, 50 * scaleX, 52 * scaleY, 2 * scaleX, 12 * scaleY);
+    }
+
+    private Boolean isSlimByArmWidth(Pixels pixels, int scaleX, int scaleY)
+    {
+        int x = 47 * scaleX;
+        int y = 20 * scaleY;
+        int h = 12 * scaleY;
+        int w = Math.max(scaleX, 1);
+        int total = w * h;
+        int opaque = this.countOpaquePixels(pixels, x, y, w, h);
+
+        if (opaque <= total * 0.1F)
+        {
+            return true;
+        }
+        if (opaque >= total * 0.9F)
+        {
+            return false;
+        }
+
+        return null;
+    }
+
+    private boolean hasAnyOpaquePixel(Pixels pixels, int x, int y, int w, int h)
+    {
+        int maxX = Math.min(x + w, pixels.width);
+        int maxY = Math.min(y + h, pixels.height);
+
+        for (int px = x; px < maxX; px++)
+        {
+            for (int py = y; py < maxY; py++)
+            {
+                if (pixels.getColor(px, py).a > 0F)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private int countOpaquePixels(Pixels pixels, int x, int y, int w, int h)
+    {
+        int maxX = Math.min(x + w, pixels.width);
+        int maxY = Math.min(y + h, pixels.height);
+        int count = 0;
+
+        for (int px = x; px < maxX; px++)
+        {
+            for (int py = y; py < maxY; py++)
+            {
+                if (pixels.getColor(px, py).a > 0F)
+                {
+                    count++;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    private boolean isAreaFullyTransparent(Pixels pixels, int x, int y, int w, int h)
+    {
+        int maxX = Math.min(x + w, pixels.width);
+        int maxY = Math.min(y + h, pixels.height);
+
+        for (int px = x; px < maxX; px++)
+        {
+            for (int py = y; py < maxY; py++)
+            {
+                if (pixels.getColor(px, py).a > 0F)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     private void removeReplay() {
