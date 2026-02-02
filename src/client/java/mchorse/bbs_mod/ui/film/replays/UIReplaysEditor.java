@@ -350,6 +350,8 @@ public class UIReplaysEditor extends UIElement
     {
         this.replay = replay;
 
+        BBSModClient.setSelectedReplay(replay);
+
         if (resetOrbit)
         {
             this.filmPanel.getController().orbit.reset();

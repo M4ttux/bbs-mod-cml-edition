@@ -114,6 +114,7 @@ public class BBSModClient implements ClientModInitializer
     private static KeyBinding keyDemorph;
     private static KeyBinding keyTeleport;
     private static KeyBinding keyZoom;
+    private static KeyBinding keyToggleReplayHud;
 
     private static UIDashboard dashboard;
 
@@ -122,6 +123,8 @@ public class BBSModClient implements ClientModInitializer
     private static GunItemRenderer gunItemRenderer = new GunItemRenderer();
     private static Films films;
     private static GunZoom gunZoom;
+
+    private static Replay selectedReplay;
 
     private static float originalFramebufferScale;
 
@@ -183,6 +186,16 @@ public class BBSModClient implements ClientModInitializer
     public static Films getFilms()
     {
         return films;
+    }
+
+    public static void setSelectedReplay(Replay replay)
+    {
+        selectedReplay = replay;
+    }
+
+    public static Replay getSelectedReplay()
+    {
+        return selectedReplay;
     }
 
     public static GunZoom getGunZoom()
@@ -407,6 +420,7 @@ public class BBSModClient implements ClientModInitializer
         keyDemorph = this.createKey("demorph", GLFW.GLFW_KEY_PERIOD);
         keyTeleport = this.createKey("teleport", GLFW.GLFW_KEY_Y);
         keyZoom = this.createKeyMouse("zoom", 2);
+        keyToggleReplayHud = this.createKey("toggle_replay_hud", GLFW.GLFW_KEY_P);
 
         WorldRenderEvents.AFTER_ENTITIES.register((context) ->
         {
@@ -539,6 +553,7 @@ public class BBSModClient implements ClientModInitializer
             }
             while (keyDemorph.wasPressed()) ClientNetwork.sendPlayerForm(null);
             while (keyTeleport.wasPressed()) this.keyTeleport();
+            while (keyToggleReplayHud.wasPressed()) BBSSettings.editorReplayHud.set(!BBSSettings.editorReplayHud.get());
 
             if (mc.player != null)
             {
