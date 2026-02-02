@@ -24,5 +24,8 @@
     "key.bbs.zoom": "Zoom (BBS gun)",
     "category.bbs.main": "BBS mod",
 
+    "bbs.config.editor.clip_type_labels": "Show clip type labels",
+    "bbs.config.editor.clip_type_labels-comment": "Display the clip type in the timeline for Camera and Action editors",
+
     "gamerule.bbsEditing": "BBS mod's editing permission"
 }

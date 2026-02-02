@@ -80,6 +80,8 @@
     "bbs.config.editor.center_lines-comment": "Líneas centrales",
     "bbs.config.editor.clip_preview": "Previsualización del Clip",
     "bbs.config.editor.clip_preview-comment": "Cuando está habilitado, puedes ver el clip seleccionado actualmente en la línea de tiempo de fotogramas clave",
+    "bbs.config.editor.clip_type_labels": "Mostrar etiquetas de tipo de clip",
+    "bbs.config.editor.clip_type_labels-comment": "Muestra el tipo de clip en la línea de tiempo del Editor de Cámara y Acciones",
     "bbs.config.editor.crosshair": "Punto de mira",
     "bbs.config.editor.crosshair-comment": "Muestra un punto de mira en el medio de la pantalla del editor de la cámara",
     "bbs.config.editor.duration": "Duración del clip",

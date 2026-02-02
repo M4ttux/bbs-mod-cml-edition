@@ -91,6 +91,8 @@
     "bbs.config.editor.center_lines-comment": "Center lines",
     "bbs.config.editor.clip_preview": "Clip preview",
     "bbs.config.editor.clip_preview-comment": "When enabled, you can see currently selected clip in the keyframe timeline",
+    "bbs.config.editor.clip_type_labels": "Show clip type labels",
+    "bbs.config.editor.clip_type_labels-comment": "Display the clip type in the timeline for Camera and Action editors",
     "bbs.config.editor.crosshair": "Crosshair",
     "bbs.config.editor.crosshair-comment": "Shows a crosshair in the middle of the camera editor's screen",
     "bbs.config.editor.duration": "Clip duration",
