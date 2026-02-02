@@ -21,6 +21,7 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
 {
     public UITextbox text;
     public UIToggle billboard;
+    public UIToggle nametag;
     public UIColor color;
     public UITrackpad max;
     public UITrackpad anchorX;
@@ -40,6 +41,8 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
 
         this.text = new UITextbox(10000, (t) -> this.form.text.set(t));
         this.billboard = new UIToggle(UIKeys.FORMS_EDITORS_BILLBOARD_TITLE, (b) -> this.form.billboard.set(b.getValue()));
+        this.nametag = new UIToggle(UIKeys.FORMS_EDITORS_LABEL_NAMETAG, (b) -> this.form.nametag.set(b.getValue()));
+        this.nametag.tooltip(UIKeys.FORMS_EDITORS_LABEL_NAMETAG_HINT);
         this.color = new UIColor((c) -> this.form.color.set(Color.rgba(c))).withAlpha();
         this.max = new UITrackpad((value) -> this.form.max.set(value.intValue()));
         this.max.limit(-1, Integer.MAX_VALUE, true).increment(10);
@@ -58,7 +61,8 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
         this.background = new UIColor((value) -> this.form.background.set(Color.rgba(value))).withAlpha();
         this.offset = new UITrackpad((value) -> this.form.offset.set(value.floatValue()));
 
-        this.options.add(UI.label(UIKeys.FORMS_EDITORS_LABEL_LABEL), this.text, this.billboard, this.color, this.max);
+
+        this.options.add(UI.label(UIKeys.FORMS_EDITORS_LABEL_LABEL), this.text, this.billboard, this.nametag, this.color, this.max);
 
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_LABEL_ANCHOR).marginTop(8), UI.row(this.anchorX, this.anchorY), this.anchorLines);
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_LABEL_SHADOW_OFFSET).marginTop(8), this.shadowX, this.shadowY);
@@ -74,6 +78,7 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
 
         this.text.setText(form.text.get());
         this.billboard.setValue(form.billboard.get());
+        this.nametag.setValue(form.nametag.get());
         this.color.setColor(form.color.get().getARGBColor());
         this.max.setValue(form.max.get());
         this.anchorX.setValue(form.anchorX.get());
@@ -97,6 +102,7 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
         this.shadowColor.picker.removeFromParent();
         this.background.picker.removeFromParent();
     }
+
 
     private static class UIMinecraftColorGuide extends UIElement
     {
