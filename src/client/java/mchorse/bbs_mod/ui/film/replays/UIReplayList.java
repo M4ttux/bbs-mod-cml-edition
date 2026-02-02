@@ -1326,7 +1326,7 @@ public class UIReplayList extends UIList<Replay> {
 
         String[] steveModel = new String[] { LAST_RANDOM_SKINS_STEVE_MODEL.isEmpty() ? defaultModel : LAST_RANDOM_SKINS_STEVE_MODEL };
         String[] alexModel = new String[] { LAST_RANDOM_SKINS_ALEX_MODEL.isEmpty() ? "player/alex" : LAST_RANDOM_SKINS_ALEX_MODEL };
-        File[] selectedFolder = new File[] { null };
+        List<File> selectedFolders = new ArrayList<>();
 
         UIConfirmOverlayPanel panel = new UIConfirmOverlayPanel(
             UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS_TITLE,
@@ -1335,7 +1335,7 @@ public class UIReplayList extends UIList<Replay> {
             {
                 if (b)
                 {
-                    if (selectedFolder[0] == null)
+                    if (selectedFolders.isEmpty())
                     {
                         UIOverlay.addOverlay(this.getContext(),
                             new UIMessageOverlayPanel(UIKeys.GENERAL_ERROR,
@@ -1346,11 +1346,39 @@ public class UIReplayList extends UIList<Replay> {
                     LAST_RANDOM_SKINS_STEVE_MODEL = steveModel[0] == null ? "" : steveModel[0];
                     LAST_RANDOM_SKINS_ALEX_MODEL = alexModel[0] == null ? "" : alexModel[0];
 
-                    this.processRandomSkins(selectedFolder[0], LAST_RANDOM_SKINS_STEVE_MODEL, LAST_RANDOM_SKINS_ALEX_MODEL);
+                    this.processRandomSkins(selectedFolders, LAST_RANDOM_SKINS_STEVE_MODEL, LAST_RANDOM_SKINS_ALEX_MODEL);
                 }
             });
 
-        UILabel folderValue = UI.label(UIKeys.GENERAL_NONE).background();
+        UILabel folderCount = UI.label(IKey.constant("Selected: 0")).background();
+        UIStringList folderList = new UIStringList((l) -> {});
+        folderList.background().h(60);
+        folderList.add("<none>");
+        final UIButton[] removeFolder = new UIButton[1];
+        removeFolder[0] = new UIButton(UIKeys.GENERAL_REMOVE, (b) ->
+        {
+            List<Integer> indices = new ArrayList<>(folderList.getCurrentIndices());
+
+            if (indices.isEmpty())
+            {
+                return;
+            }
+
+            Collections.sort(indices);
+
+            for (int i = indices.size() - 1; i >= 0; i--)
+            {
+                int index = indices.get(i);
+
+                if (index >= 0 && index < selectedFolders.size())
+                {
+                    selectedFolders.remove(index);
+                }
+            }
+
+            this.updateRandomSkinsFolderList(folderList, folderCount, removeFolder[0], selectedFolders);
+        });
+        removeFolder[0].setEnabled(false);
         UIButton pickFolder = new UIButton(UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS_PICK_FOLDER, (b) ->
         {
             UIFolderPickerOverlayPanel picker = new UIFolderPickerOverlayPanel(
@@ -1358,10 +1386,11 @@ public class UIReplayList extends UIList<Replay> {
                 UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS_PICK_FOLDER_DESCRIPTION,
                 (folder) ->
                 {
-                    selectedFolder[0] = folder;
-
-                    String label = folder.getName();
-                    folderValue.label = IKey.constant(label);
+                    if (folder != null && !selectedFolders.contains(folder))
+                    {
+                        selectedFolders.add(folder);
+                        this.updateRandomSkinsFolderList(folderList, folderCount, removeFolder[0], selectedFolders);
+                    }
                 });
 
             UIOverlay.addOverlay(this.getContext(), picker);
@@ -1390,43 +1419,60 @@ public class UIReplayList extends UIList<Replay> {
 
         UIElement controls = UI.column(6,
             UI.label(UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS_FOLDER),
-            folderValue,
-            pickFolder,
-            UI.label(UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS_MODEL_STEVE).marginTop(8),
-            stevePick[0],
-            UI.label(UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS_MODEL_ALEX).marginTop(8),
-            alexPick[0]
+            folderCount,
+            folderList,
+            UI.row(4, pickFolder, removeFolder[0]),
+            UI.row(4,
+                UI.column(2,
+                    UI.label(UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS_MODEL_STEVE).marginTop(8),
+                    stevePick[0]
+                ),
+                UI.column(2,
+                    UI.label(UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS_MODEL_ALEX).marginTop(8),
+                    alexPick[0]
+                )
+            )
         );
 
-        controls.relative(panel.content).x(6).y(70).w(1F, -12).h(1F, -170);
+        controls.relative(panel.content).x(6).y(70).w(1F, -12).h(1F, -32);
         panel.content.add(controls);
 
-        panel.confirm.label = UIKeys.GENERAL_CONFIRM;
-        panel.confirm.relative(panel.content).x(5).y(1F, -25).w(1F, -10).h(20).anchor(0F, 0F);
+        panel.content.remove(panel.confirm);
+        panel.content.add(panel.confirm);
 
-        UIOverlay.addOverlay(this.getContext(), panel, 260, 260);
+        panel.confirm.label = UIKeys.GENERAL_CONFIRM;
+        panel.confirm.relative(panel.content).x(5).y(1F, -26).w(1F, -10).h(20).anchor(0F, 0F);
+
+        UIOverlay.addOverlay(this.getContext(), panel, 300, 300);
     }
 
-    private void processRandomSkins(File skinsFolder, String steveModel, String alexModel) {
-        if (skinsFolder == null) {
+    private void processRandomSkins(List<File> skinsFolders, String steveModel, String alexModel) {
+        if (skinsFolders == null || skinsFolders.isEmpty()) {
             return;
         }
 
-        if (!skinsFolder.exists() || !skinsFolder.isDirectory()) {
-            UIOverlay.addOverlay(this.getContext(),
-                    new UIMessageOverlayPanel(UIKeys.GENERAL_ERROR,
-                            IKey.constant("The specified folder does not exist or is not a directory.")));
-            return;
-        }
-
-        // Get all PNG files from the folder
+        // Get all PNG files from the folders
         List<File> skinFiles = new ArrayList<>();
-        File[] files = skinsFolder.listFiles();
+        for (File skinsFolder : skinsFolders)
+        {
+            if (skinsFolder == null || !skinsFolder.exists() || !skinsFolder.isDirectory())
+            {
+                UIOverlay.addOverlay(this.getContext(),
+                    new UIMessageOverlayPanel(UIKeys.GENERAL_ERROR,
+                        IKey.constant("One of the selected folders does not exist or is not a directory.")));
+                return;
+            }
 
-        if (files != null) {
-            for (File file : files) {
-                if (file.isFile() && file.getName().toLowerCase().endsWith(".png")) {
-                    skinFiles.add(file);
+            File[] files = skinsFolder.listFiles();
+
+            if (files != null)
+            {
+                for (File file : files)
+                {
+                    if (file.isFile() && file.getName().toLowerCase().endsWith(".png"))
+                    {
+                        skinFiles.add(file);
+                    }
                 }
             }
         }
@@ -1434,7 +1480,7 @@ public class UIReplayList extends UIList<Replay> {
         if (skinFiles.isEmpty()) {
             UIOverlay.addOverlay(this.getContext(),
                     new UIMessageOverlayPanel(UIKeys.GENERAL_ERROR,
-                            IKey.constant("No PNG files found in the specified folder.")));
+                            IKey.constant("No PNG files found in the selected folders.")));
             return;
         }
 
@@ -1449,14 +1495,19 @@ public class UIReplayList extends UIList<Replay> {
         }
 
         // Apply skins to replays
-        Map<File, Boolean> slimCache = new HashMap<>();
+        Map<File, SkinType> skinTypeCache = new HashMap<>();
         int skinIndex = 0;
         int successCount = 0;
 
         for (Replay replay : selectedReplays) {
             File skinFile = skinFiles.get(skinIndex % skinFiles.size());
-            boolean slim = slimCache.computeIfAbsent(skinFile, this::isSlimSkin);
+            SkinType skinType = skinTypeCache.computeIfAbsent(skinFile, this::getSkinType);
+            boolean slim = skinType == SkinType.ALEX;
             String targetModel = slim ? alexModel : steveModel;
+
+            System.out.println("[RandomSkins] file=" + skinFile.getName()
+                + " type=" + skinType
+                + " model=" + (targetModel == null || targetModel.isEmpty() ? "<none>" : targetModel));
 
             // Create a Link using the AssetProvider
             Link skinLink = BBSMod.getProvider().getLink(skinFile);
@@ -1511,6 +1562,28 @@ public class UIReplayList extends UIList<Replay> {
         return IKey.constant(model);
     }
 
+    private void updateRandomSkinsFolderList(UIStringList folderList, UILabel folderCount, UIButton removeButton, List<File> folders)
+    {
+        folderList.clear();
+
+        if (folders == null || folders.isEmpty())
+        {
+            folderCount.label = IKey.constant("Selected: 0");
+            folderList.add("<none>");
+            removeButton.setEnabled(false);
+            return;
+        }
+
+        folderCount.label = IKey.constant("Selected: " + folders.size());
+        removeButton.setEnabled(true);
+
+        for (File folder : folders)
+        {
+            String label = folder == null ? "" : folder.getName();
+            folderList.add(label);
+        }
+    }
+
     private void openModelPicker(String current, Consumer<String> callback)
     {
         UIListOverlayPanel list = new UIListOverlayPanel(UIKeys.FORMS_EDITOR_MODEL_MODELS, (l) ->
@@ -1525,36 +1598,68 @@ public class UIReplayList extends UIList<Replay> {
         UIOverlay.addOverlay(this.getContext(), list);
     }
 
-    private boolean isSlimSkin(File skinFile)
+    private SkinType getSkinType(File skinFile)
     {
         try (FileInputStream stream = new FileInputStream(skinFile))
         {
             Pixels pixels = Pixels.fromPNGStream(stream);
-            boolean slim = this.isSlimSkin(pixels);
+            SkinType skinType = this.getSkinType(pixels);
+
+            if (skinType == SkinType.STEVE)
+            {
+                SkinType nameType = this.getSkinTypeFromName(skinFile);
+
+                if (nameType == SkinType.ALEX)
+                {
+                    skinType = nameType;
+                }
+            }
 
             if (pixels != null)
             {
                 pixels.delete();
             }
 
-            return slim;
+            return skinType;
         }
         catch (Exception e)
         {
-            return false;
+            return this.getSkinTypeFromName(skinFile);
         }
     }
 
-    private boolean isSlimSkin(Pixels pixels)
+    private SkinType getSkinTypeFromName(File skinFile)
+    {
+        if (skinFile == null)
+        {
+            return SkinType.STEVE;
+        }
+
+        String name = skinFile.getName().toLowerCase();
+
+        if (name.contains("alex") || name.contains("slim"))
+        {
+            return SkinType.ALEX;
+        }
+
+        return SkinType.STEVE;
+    }
+
+    private SkinType getSkinType(Pixels pixels)
     {
         if (pixels == null || pixels.width < 64 || pixels.height < 64)
         {
-            return false;
+            return SkinType.STEVE;
+        }
+
+        if (pixels.width == 64 && pixels.height == 64)
+        {
+            return this.isAlexSkin(pixels) ? SkinType.ALEX : SkinType.STEVE;
         }
 
         if (pixels.width % 64 != 0 || pixels.height % 64 != 0)
         {
-            return false;
+            return SkinType.STEVE;
         }
 
         int scaleX = pixels.width / 64;
@@ -1562,20 +1667,43 @@ public class UIReplayList extends UIList<Replay> {
 
         if (scaleX <= 0 || scaleY <= 0)
         {
-            return false;
+            return SkinType.STEVE;
         }
 
         Boolean armWidthSlim = this.isSlimByArmWidth(pixels, scaleX, scaleY);
 
         if (armWidthSlim != null)
         {
-            return armWidthSlim.booleanValue();
+            return armWidthSlim.booleanValue() ? SkinType.ALEX : SkinType.STEVE;
         }
 
-        return this.isAreaFullyTransparent(pixels, 54 * scaleX, 20 * scaleY, 2 * scaleX, 12 * scaleY)
+        boolean slim = this.isAreaFullyTransparent(pixels, 54 * scaleX, 20 * scaleY, 2 * scaleX, 12 * scaleY)
             && this.isAreaFullyTransparent(pixels, 54 * scaleX, 36 * scaleY, 2 * scaleX, 12 * scaleY)
             && this.isAreaFullyTransparent(pixels, 46 * scaleX, 52 * scaleY, 2 * scaleX, 12 * scaleY)
             && this.isAreaFullyTransparent(pixels, 50 * scaleX, 52 * scaleY, 2 * scaleX, 12 * scaleY);
+
+        return slim ? SkinType.ALEX : SkinType.STEVE;
+    }
+
+    private boolean isAlexSkin(Pixels pixels)
+    {
+        int x = 54;
+
+        for (int y = 20; y < 32; y++)
+        {
+            if (pixels.getColor(x, y).a > 0F)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private enum SkinType
+    {
+        STEVE,
+        ALEX
     }
 
     private Boolean isSlimByArmWidth(Pixels pixels, int scaleX, int scaleY)
