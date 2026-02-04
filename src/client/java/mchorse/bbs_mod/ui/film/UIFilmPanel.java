@@ -712,22 +712,22 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 }
             });
 
-            menu.action(Icons.EXCHANGE, UIKeys.FILM_LAYOUT_HORIZONTAL_BOTTOM, () ->
+            menu.action(Icons.EXCHANGE, UIKeys.FILM_LAYOUT_HORIZONTAL_BOTTOM, layout.getLayout() == ValueEditorLayout.LAYOUT_HORIZONTAL_BOTTOM, () ->
             {
                 layout.setLayout(ValueEditorLayout.LAYOUT_HORIZONTAL_BOTTOM);
                 this.setupEditorFlex(true);
             });
-            menu.action(Icons.CONVERT, UIKeys.FILM_LAYOUT_VERTICAL_LEFT, () ->
+            menu.action(Icons.CONVERT, UIKeys.FILM_LAYOUT_VERTICAL_LEFT, layout.getLayout() == ValueEditorLayout.LAYOUT_VERTICAL_LEFT, () ->
             {
                 layout.setLayout(ValueEditorLayout.LAYOUT_VERTICAL_LEFT);
                 this.setupEditorFlex(true);
             });
-            menu.action(Icons.ARROW_RIGHT, UIKeys.FILM_LAYOUT_VERTICAL_RIGHT, () ->
+            menu.action(Icons.ARROW_RIGHT, UIKeys.FILM_LAYOUT_VERTICAL_RIGHT, layout.getLayout() == ValueEditorLayout.LAYOUT_VERTICAL_RIGHT, () ->
             {
                 layout.setLayout(ValueEditorLayout.LAYOUT_VERTICAL_RIGHT);
                 this.setupEditorFlex(true);
             });
-            menu.action(Icons.MAIN_HANDLE, UIKeys.FILM_LAYOUT_VERTICAL_MIDDLE, () ->
+            menu.action(Icons.MAIN_HANDLE, UIKeys.FILM_LAYOUT_VERTICAL_MIDDLE, layout.getLayout() == ValueEditorLayout.LAYOUT_VERTICAL_MIDDLE, () ->
             {
                 layout.setLayout(ValueEditorLayout.LAYOUT_VERTICAL_MIDDLE);
                 this.setupEditorFlex(true);
@@ -746,8 +746,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private void updateLayoutLockTooltip()
     {
         ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
+        boolean locked = layout.isLayoutLocked();
 
-        if (layout.isLayoutLocked())
+        this.layoutLock.active(locked);
+
+        if (locked)
         {
             this.layoutLock.tooltip(UIKeys.FILM_LAYOUT_UNLOCK, Direction.LEFT);
         }
@@ -1136,6 +1139,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (this.cameraEditor.isVisible()) UIDashboardPanels.renderHighlightHorizontal(context.batcher, this.openCameraEditor.area);
         if (this.replayEditor.isVisible()) UIDashboardPanels.renderHighlightHorizontal(context.batcher, this.openReplayEditor.area);
         if (this.actionEditor.isVisible()) UIDashboardPanels.renderHighlightHorizontal(context.batcher, this.openActionEditor.area);
+        if (BBSSettings.editorLayoutSettings.isLayoutLocked()) UIDashboardPanels.renderHighlightHorizontal(context.batcher, this.layoutLock.area);
     }
 
     /**
