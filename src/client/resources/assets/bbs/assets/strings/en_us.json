@@ -595,6 +595,7 @@
     "bbs.ui.film.layout.horizontal_top": "Horizontal (timeline top)",
     "bbs.ui.film.layout.vertical_left": "Vertical (timeline left)",
     "bbs.ui.film.layout.vertical_right": "Vertical (timeline right)",
+    "bbs.ui.film.layout.vertical_middle": "Vertical 3 columns",
     "bbs.ui.film.layout.lock": "Lock layout handle",
     "bbs.ui.film.layout.unlock": "Unlock layout handle",
     "bbs.ui.film.video_recording": "Recording %s, press %s to stop...",

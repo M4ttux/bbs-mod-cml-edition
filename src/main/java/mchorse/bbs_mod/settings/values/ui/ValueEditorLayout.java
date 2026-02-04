@@ -11,6 +11,7 @@ public class ValueEditorLayout extends BaseValue
     public static final int LAYOUT_HORIZONTAL_TOP = 1;
     public static final int LAYOUT_VERTICAL_LEFT = 2;
     public static final int LAYOUT_VERTICAL_RIGHT = 3;
+    public static final int LAYOUT_VERTICAL_MIDDLE = 4;
 
     private int layout = LAYOUT_HORIZONTAL_BOTTOM;
     private boolean layoutLocked;
@@ -93,7 +94,12 @@ public class ValueEditorLayout extends BaseValue
 
     public boolean isMainOnLeft()
     {
-        return this.layout == LAYOUT_VERTICAL_LEFT;
+        return this.layout == LAYOUT_VERTICAL_LEFT || this.layout == LAYOUT_VERTICAL_MIDDLE;
+    }
+
+    public boolean isMiddleLayout()
+    {
+        return this.layout == LAYOUT_VERTICAL_MIDDLE;
     }
 
     public float getMainSizeH()
@@ -171,7 +177,7 @@ public class ValueEditorLayout extends BaseValue
 
     private int clampLayout(int layout)
     {
-        if (layout < LAYOUT_HORIZONTAL_BOTTOM || layout > LAYOUT_VERTICAL_RIGHT)
+        if (layout < LAYOUT_HORIZONTAL_BOTTOM || layout > LAYOUT_VERTICAL_MIDDLE)
         {
             return LAYOUT_HORIZONTAL_BOTTOM;
         }

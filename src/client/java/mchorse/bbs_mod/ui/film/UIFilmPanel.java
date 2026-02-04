@@ -92,6 +92,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public UIElement main;
     public UIElement editArea;
     public UIDraggable draggableMain;
+    public UIDraggable draggableEditor;
     public UIFilmRecorder recorder;
     public UIFilmPreview preview;
 
@@ -168,6 +169,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 }
                 layout.setEditorSizeH(1F - (context.mouseX - this.editor.area.x) / (float) this.editor.area.w);
             }
+            else if (layout.isMiddleLayout())
+            {
+                layout.setMainSizeV((context.mouseX - this.editor.area.x) / (float) this.editor.area.w);
+            }
             else
             {
                 if (layout.isMainOnLeft())
@@ -191,6 +196,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             if (layout.isHorizontal())
             {
                 return new Vector2i(this.editArea.area.x, layout.isMainOnTop() ? this.editArea.area.y : this.editArea.area.ey());
+            }
+
+            if (layout.isMiddleLayout())
+            {
+                return new Vector2i(this.main.area.x, this.editArea.area.y);
             }
 
             int x = layout.isMainOnLeft() ? this.editArea.area.x : this.main.area.x;
@@ -218,18 +228,50 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             else
             {
                 ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-                int x = layout.isMainOnLeft() ? this.editArea.area.x + 3 : this.main.area.x + 3;
+                int x = layout.isMiddleLayout() ? this.main.area.x + 3 : (layout.isMainOnLeft() ? this.editArea.area.x + 3 : this.main.area.x + 3);
                 int y = this.editArea.area.y - 3;
 
                 context.batcher.box(x, y - size, x + 1, y, Colors.WHITE);
                 context.batcher.box(x, y - 1, x + size, y, Colors.WHITE);
 
-                x = layout.isMainOnLeft() ? this.editArea.area.x + 3 : this.main.area.x + 3;
+                x = layout.isMiddleLayout() ? this.main.area.x + 3 : (layout.isMainOnLeft() ? this.editArea.area.x + 3 : this.main.area.x + 3);
                 y = this.editArea.area.y + 3;
 
                 context.batcher.box(x, y, x + 1, y + size, Colors.WHITE);
                 context.batcher.box(x, y, x + size, y + 1, Colors.WHITE);
             }
+        });
+
+        this.draggableEditor = new UIDraggable((context) ->
+        {
+            ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
+
+            if (layout.isLayoutLocked() || !layout.isMiddleLayout())
+            {
+                return;
+            }
+
+            float mainSize = layout.getMainSizeV();
+            float editorSize = (context.mouseX - this.editor.area.x) / (float) this.editor.area.w - mainSize;
+
+            layout.setEditorSizeH(editorSize);
+
+            this.setupEditorFlex(true);
+        });
+        this.draggableEditor.reference(() -> new Vector2i(this.editArea.area.x, this.editArea.area.y));
+        this.draggableEditor.rendering((context) ->
+        {
+            int size = 5;
+            int x = this.editArea.area.x + 3;
+            int y = this.editArea.area.y - 3;
+
+            context.batcher.box(x, y - size, x + 1, y, Colors.WHITE);
+            context.batcher.box(x, y - 1, x + size, y, Colors.WHITE);
+
+            y = this.editArea.area.y + 3;
+
+            context.batcher.box(x, y, x + 1, y + size, Colors.WHITE);
+            context.batcher.box(x, y, x + size, y + 1, Colors.WHITE);
         });
 
         /* Editors */
@@ -267,7 +309,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.iconBar.add(this.openHistory, this.toggleHorizontal.marginTop(9), this.layoutLock, this.openCameraEditor.marginTop(9), this.openReplayEditor, this.openActionEditor);
 
         this.editor.add(this.main, new UIRenderable(this::renderIcons));
-        this.main.add(this.cameraEditor, this.replayEditor, this.actionEditor, this.editArea, this.preview, this.draggableMain);
+        this.main.add(this.cameraEditor, this.replayEditor, this.actionEditor, this.editArea, this.preview, this.draggableMain, this.draggableEditor);
         this.add(this.controller, new UIRenderable(this::renderDividers));
         this.overlay.namesList.setFileIcon(Icons.FILM);
 
@@ -426,6 +468,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.editArea.resetFlex();
         this.preview.resetFlex();
         this.draggableMain.resetFlex();
+        this.draggableEditor.resetFlex();
+
+        this.draggableEditor.setVisible(layout.isMiddleLayout());
 
         if (layout.isHorizontal())
         {
@@ -443,6 +488,32 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             }
 
             this.draggableMain.hoverOnly().relative(this.editArea).x(-6).y(0).w(12).h(1F);
+        }
+        else if (layout.isMiddleLayout())
+        {
+            float mainSizeV = layout.getMainSizeV();
+            float editorSizeH = layout.getEditorSizeH();
+
+            if (mainSizeV + editorSizeH > 0.95F)
+            {
+                editorSizeH = 0.95F - mainSizeV;
+
+                if (editorSizeH < 0.05F)
+                {
+                    editorSizeH = 0.05F;
+                    mainSizeV = 0.95F - editorSizeH;
+                }
+
+                layout.setMainSizeV(mainSizeV);
+                layout.setEditorSizeH(editorSizeH);
+            }
+
+            this.preview.relative(this.editor).w(mainSizeV).h(1F);
+            this.main.relative(this.editor).x(mainSizeV).w(editorSizeH).h(1F);
+            this.editArea.relative(this.editor).x(mainSizeV + editorSizeH).w(1F - mainSizeV - editorSizeH).h(1F);
+
+            this.draggableMain.hoverOnly().relative(this.preview).x(1F).w(12).h(1F);
+            this.draggableEditor.hoverOnly().relative(this.main).x(1F).w(12).h(1F);
         }
         else
         {
@@ -656,6 +727,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 layout.setLayout(ValueEditorLayout.LAYOUT_VERTICAL_RIGHT);
                 this.setupEditorFlex(true);
             });
+            menu.action(Icons.MAIN_HANDLE, UIKeys.FILM_LAYOUT_VERTICAL_MIDDLE, () ->
+            {
+                layout.setLayout(ValueEditorLayout.LAYOUT_VERTICAL_MIDDLE);
+                this.setupEditorFlex(true);
+            });
         });
     }
 
@@ -693,6 +769,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (layout.getLayout() == ValueEditorLayout.LAYOUT_VERTICAL_LEFT)
         {
             return Icons.CONVERT;
+        }
+
+        if (layout.getLayout() == ValueEditorLayout.LAYOUT_VERTICAL_MIDDLE)
+        {
+            return Icons.MAIN_HANDLE;
         }
 
         return Icons.EXCHANGE;
